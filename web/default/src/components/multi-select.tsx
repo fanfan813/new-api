@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import * as React from 'react'
 import { Add01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
+import { ChevronDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { copyToClipboard } from '@/lib/copy-to-clipboard'
@@ -40,6 +41,7 @@ import {
 export type Option = {
   label: string
   value: string
+  trailingLabel?: string
 }
 
 interface MultiSelectProps {
@@ -61,6 +63,12 @@ interface MultiSelectProps {
   id?: string
   /** Disable the entire control. */
   disabled?: boolean
+  /** Show a dropdown affordance at the end of the input. */
+  showChevron?: boolean
+  /** Compact selected state text. When set, selected chips are hidden. */
+  selectedSummary?: string
+  /** Custom option renderer for dropdown rows. */
+  renderOption?: (option: Option) => React.ReactNode
   /**
    * Limits rendered chips while keeping all values selected.
    * Hidden values remain searchable/removable from the dropdown.
@@ -129,6 +137,14 @@ export function MultiSelect(props: MultiSelectProps) {
     const map = new Map<string, string>()
     for (const option of props.options) {
       map.set(option.value, option.label)
+    }
+    return map
+  }, [props.options])
+
+  const optionMap = React.useMemo(() => {
+    const map = new Map<string, Option>()
+    for (const option of props.options) {
+      map.set(option.value, option)
     }
     return map
   }, [props.options])
@@ -258,6 +274,14 @@ export function MultiSelect(props: MultiSelectProps) {
       >
         <ComboboxValue>
           {(values: string[]) => {
+            if (props.selectedSummary && values.length > 0) {
+              return (
+                <span className='bg-muted text-muted-foreground flex h-[calc(--spacing(5.25))] w-fit max-w-[12rem] items-center justify-center rounded-sm px-1.5 text-xs font-medium whitespace-nowrap'>
+                  {props.selectedSummary}
+                </span>
+              )
+            }
+
             const shouldLimit =
               typeof props.maxVisibleChips === 'number' && !expanded
             const visibleValues = shouldLimit
@@ -331,6 +355,9 @@ export function MultiSelect(props: MultiSelectProps) {
           onKeyDown={handleKeyDown}
           aria-label={placeholder}
         />
+        {props.showChevron && (
+          <ChevronDown className='text-muted-foreground pointer-events-none size-4 shrink-0' />
+        )}
       </ComboboxChips>
 
       <ComboboxContent anchor={chipsAnchorRef}>
@@ -339,6 +366,7 @@ export function MultiSelect(props: MultiSelectProps) {
             {(item: string) => {
               const isCreate = canCreate && item === trimmedInput
               const label = labelMap.get(item) ?? item
+              const option = optionMap.get(item)
               return (
                 <ComboboxItem
                   key={item}
@@ -359,6 +387,8 @@ export function MultiSelect(props: MultiSelectProps) {
                           : t('Add "{{value}}"', { value: item })}
                       </span>
                     </>
+                  ) : props.renderOption && option ? (
+                    props.renderOption(option)
                   ) : (
                     <span className='truncate'>{label}</span>
                   )}

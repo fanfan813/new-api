@@ -77,6 +77,12 @@ const LazyUserCharts = lazy(() =>
   }))
 )
 
+const LazyTokenCharts = lazy(() =>
+  import('./components/tokens/token-charts').then((m) => ({
+    default: m.TokenCharts,
+  }))
+)
+
 function LogStatCardsFallback() {
   return (
     <div className='overflow-hidden rounded-lg border'>
@@ -140,6 +146,9 @@ const SECTION_META: Record<DashboardSectionId, { titleKey: string }> = {
   users: {
     titleKey: 'User Analytics',
   },
+  tokens: {
+    titleKey: 'Token Analytics',
+  },
 }
 
 export function Dashboard() {
@@ -188,7 +197,9 @@ export function Dashboard() {
   const visibleSections = useMemo(
     () =>
       DASHBOARD_SECTION_IDS.filter(
-        (section) => section !== 'overview' && (section !== 'users' || isAdmin)
+        (section) =>
+          section !== 'overview' &&
+          ((section !== 'users' && section !== 'tokens') || isAdmin)
       ),
     [isAdmin]
   )
@@ -295,6 +306,13 @@ export function Dashboard() {
             <FadeIn>
               <Suspense fallback={<ModelChartsFallback />}>
                 <LazyUserCharts />
+              </Suspense>
+            </FadeIn>
+          )}
+          {activeSection === 'tokens' && (
+            <FadeIn>
+              <Suspense fallback={<ModelChartsFallback />}>
+                <LazyTokenCharts />
               </Suspense>
             </FadeIn>
           )}

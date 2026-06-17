@@ -17,7 +17,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { api } from '@/lib/api'
-import type { QuotaDataItem, UptimeGroupResult } from './types'
+import type {
+  QuotaDataItem,
+  TokenAnalyticsData,
+  UptimeGroupResult,
+} from './types'
 
 // ============================================================================
 // Dashboard APIs
@@ -57,6 +61,31 @@ export async function getUserQuotaDataByUsers(params: {
   const res = await api.get<{ success: boolean; data: QuotaDataItem[] }>(
     '/api/data/users',
     { params }
+  )
+  return res.data
+}
+
+export async function getTokenAnalytics(params: {
+  start_timestamp: number
+  end_timestamp: number
+  limit?: number
+  user_ids?: number[]
+  token_ids?: number[]
+}) {
+  const searchParams = new URLSearchParams({
+    start_timestamp: String(params.start_timestamp),
+    end_timestamp: String(params.end_timestamp),
+  })
+  if (params.limit) searchParams.set('limit', String(params.limit))
+  for (const id of params.user_ids ?? []) {
+    searchParams.append('user_ids', String(id))
+  }
+  for (const id of params.token_ids ?? []) {
+    searchParams.append('token_ids', String(id))
+  }
+
+  const res = await api.get<{ success: boolean; data: TokenAnalyticsData }>(
+    `/api/data/tokens?${searchParams.toString()}`
   )
   return res.data
 }

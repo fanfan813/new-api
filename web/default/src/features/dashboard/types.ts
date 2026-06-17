@@ -33,6 +33,49 @@ export interface QuotaDataItem {
   quota?: number
 }
 
+export interface TokenAnalyticsItem {
+  token_id: number
+  token_name: string
+  user_id: number
+  username: string
+  count: number
+  quota: number
+  token_used: number
+  success_count: number
+  error_count: number
+  last_used_at: number
+}
+
+export interface TokenAnalyticsTrendItem {
+  token_id: number
+  token_name: string
+  username: string
+  created_at: number
+  count: number
+  quota: number
+  token_used: number
+}
+
+export interface TokenAnalyticsUserOption {
+  id: number
+  username: string
+  display_name?: string
+}
+
+export interface TokenAnalyticsTokenOption {
+  id: number
+  name: string
+  user_id: number
+  username: string
+}
+
+export interface TokenAnalyticsData {
+  items: TokenAnalyticsItem[]
+  trend: TokenAnalyticsTrendItem[]
+  user_options: TokenAnalyticsUserOption[]
+  token_options: TokenAnalyticsTokenOption[]
+}
+
 // ============================================================================
 // Uptime Monitoring Types
 // ============================================================================
