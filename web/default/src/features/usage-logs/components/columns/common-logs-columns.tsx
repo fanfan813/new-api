@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { type ColumnDef } from '@tanstack/react-table'
-import { CircleAlert, GitBranch, Sparkles, KeyRound } from 'lucide-react'
+import { CircleAlert, GitBranch, Globe, Sparkles, KeyRound } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -274,7 +274,10 @@ function buildDetailSegments(
   return segments
 }
 
-export function useCommonLogsColumns(isAdmin: boolean): ColumnDef<UsageLog>[] {
+export function useCommonLogsColumns(
+  isAdmin: boolean,
+  showIpInLogs: boolean
+): ColumnDef<UsageLog>[] {
   const { t } = useTranslation()
   const columns: ColumnDef<UsageLog>[] = [
     {
@@ -580,6 +583,7 @@ export function useCommonLogsColumns(isAdmin: boolean): ColumnDef<UsageLog>[] {
     },
     size: 160,
   })
+
   columns.push(
     {
       accessorKey: 'model_name',
@@ -808,6 +812,37 @@ export function useCommonLogsColumns(isAdmin: boolean): ColumnDef<UsageLog>[] {
         )
       },
     },
+
+    ...(showIpInLogs
+      ? [
+          {
+            accessorKey: 'ip',
+            header: t('IP Address'),
+            cell: function IpCell({ row }) {
+              const { sensitiveVisible } = useUsageLogsContext()
+              const log = row.original
+              if (!log.ip) {
+                return (
+                  <span className='text-muted-foreground/50 text-xs'>-</span>
+                )
+              }
+
+              const ipLabel = sensitiveVisible ? log.ip : '••••'
+              return (
+                <StatusBadge
+                  label={ipLabel}
+                  icon={Globe}
+                  copyText={sensitiveVisible ? log.ip : undefined}
+                  size='sm'
+                  showDot={false}
+                  className='border-border/60 bg-muted/30 text-foreground h-6 max-w-[150px] gap-1.5 overflow-hidden rounded-md border px-2 py-0.5 font-mono'
+                />
+              )
+            },
+            size: 150,
+          } satisfies ColumnDef<UsageLog>,
+        ]
+      : []),
 
     {
       accessorKey: 'content',

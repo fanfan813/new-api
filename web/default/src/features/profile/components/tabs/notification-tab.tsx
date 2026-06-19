@@ -22,12 +22,13 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { PasswordInput } from '@/components/password-input'
+import { ROLE } from '@/lib/roles'
+import { useAuthStore } from '@/stores/auth-store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { ROLE } from '@/lib/roles'
 
 import { updateUserSettings } from '../../api'
 import {
@@ -67,6 +68,8 @@ interface NotificationTabProps {
 export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
   const { t } = useTranslation()
   const isAdmin = (profile?.role ?? 0) >= ROLE.ADMIN
+  const currentUser = useAuthStore((state) => state.auth.user)
+  const setUser = useAuthStore((state) => state.auth.setUser)
   const [loading, setLoading] = useState(false)
   const [settings, setSettings] = useState<UserSettings>({
     notify_type: 'email',
@@ -80,6 +83,7 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
     gotify_priority: 5,
     accept_unset_model_ratio_model: false,
     record_ip_log: false,
+    show_ip_in_logs: false,
     upstream_model_update_notify_enabled: false,
   })
 
@@ -108,6 +112,7 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
         accept_unset_model_ratio_model:
           parsed.accept_unset_model_ratio_model || false,
         record_ip_log: parsed.record_ip_log || false,
+        show_ip_in_logs: parsed.show_ip_in_logs || false,
         upstream_model_update_notify_enabled:
           parsed.upstream_model_update_notify_enabled || false,
       })
@@ -120,6 +125,17 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
       const response = await updateUserSettings(settings)
 
       if (response.success) {
+        if (currentUser) {
+          const currentSetting =
+            typeof currentUser.setting === 'string'
+              ? parseUserSettings(currentUser.setting)
+              : currentUser.setting
+          const nextSetting: Record<string, unknown> = {
+            ...(currentSetting || {}),
+            ...settings,
+          }
+          setUser({ ...currentUser, setting: nextSetting })
+        }
         toast.success(t('Settings updated successfully'))
         onUpdate()
       } else {
@@ -377,19 +393,40 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
         </div>
 
         {/* Record IP Log */}
-        <div className='flex items-start justify-between gap-3 rounded-lg border p-3 sm:items-center sm:p-4'>
-          <div className='space-y-0.5'>
-            <Label htmlFor='recordIp'>{t('Record IP Address')}</Label>
-            <p className='text-muted-foreground text-xs sm:text-sm'>
-              {t('Log IP address for usage and error logs')}
-            </p>
+        <div className='grid gap-3 rounded-lg border p-3 sm:grid-cols-2 sm:p-4'>
+          <div className='flex items-start justify-between gap-3 sm:items-center'>
+            <div className='space-y-0.5'>
+              <Label htmlFor='recordIp'>{t('Record IP Address')}</Label>
+              <p className='text-muted-foreground text-xs sm:text-sm'>
+                {t('Log IP address for usage and error logs')}
+              </p>
+            </div>
+            <Switch
+              id='recordIp'
+              className='shrink-0'
+              checked={settings.record_ip_log}
+              onCheckedChange={(checked) =>
+                updateField('record_ip_log', checked)
+              }
+            />
           </div>
-          <Switch
-            id='recordIp'
-            className='shrink-0'
-            checked={settings.record_ip_log}
-            onCheckedChange={(checked) => updateField('record_ip_log', checked)}
-          />
+
+          <div className='flex items-start justify-between gap-3 sm:items-center'>
+            <div className='space-y-0.5'>
+              <Label htmlFor='showIpInLogs'>{t('Show IP in Usage Logs')}</Label>
+              <p className='text-muted-foreground text-xs sm:text-sm'>
+                {t('Display the IP address column in usage logs')}
+              </p>
+            </div>
+            <Switch
+              id='showIpInLogs'
+              className='shrink-0'
+              checked={settings.show_ip_in_logs}
+              onCheckedChange={(checked) =>
+                updateField('show_ip_in_logs', checked)
+              }
+            />
+          </div>
         </div>
       </div>
 
