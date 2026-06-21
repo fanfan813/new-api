@@ -5276,6 +5276,7 @@
     "Year": "今年",
     "years": "年",
     "Yes": "是",
+    "Yesterday": "昨天",
     "You are about to delete {{count}} API key(s).": "您即將刪除 {{count}} 個 API 金鑰。",
     "You are running the latest version ({{version}}).": "您正在執行最新版本 ({{version}})。",
     "You can close this tab once the binding completes or a success message appears in the original window.": "連結完成後或原窗口出現成功訊息後，您可以關閉此標籤頁。",
