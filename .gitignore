@@ -11,6 +11,9 @@ logs
 web/dist
 web/node_modules
 .env
+docker-compose.local.yml
+.serena/
+scripts/
 one-api
 new-api
 /__debug_bin*
@@ -23,6 +26,7 @@ tiktoken_cache
 plans
 .claude
 .cursor
+dbhub.properties
 
 electron/node_modules
 electron/dist
