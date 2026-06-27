@@ -22,7 +22,8 @@ import (
 // provide the current request body through BodyStorage or BillingRequestInput;
 // channel retries retain the resulting billing session and pricing snapshot.
 func PrepareRequestBilling(c *gin.Context, info *relaycommon.RelayInfo) *types.NewAPIError {
-	needSensitiveCheck := setting.ShouldCheckPromptSensitive()
+	tokenName := c.GetString("token_name")
+	needSensitiveCheck := setting.ShouldCheckPromptSensitive() && !service.IsSensitiveIgnoredToken(tokenName)
 	meta := &types.TokenCountMeta{TokenType: types.TokenTypeTokenizer}
 	if info.Request != nil && (needSensitiveCheck || constant.CountToken) {
 		meta = info.Request.GetTokenCountMeta()
@@ -43,8 +44,10 @@ func PrepareRequestBilling(c *gin.Context, info *relaycommon.RelayInfo) *types.N
 	if needSensitiveCheck && meta != nil {
 		if contains, words := service.CheckSensitiveText(meta.CombineText); contains {
 			service.RequestPolicy(c).AddEvent(service.PolicyEvent{ErrorCode: string(types.ErrorCodeSensitiveWordsDetected), ErrorSource: "local", Decision: service.PolicyDecision{Action: "stop", Reason: "local_rejection", Source: "global"}, Health: "unchanged"})
-			message := fmt.Sprintf("user sensitive words detected: %s", strings.Join(words, ", "))
-			logger.LogWarn(c, message)
+			message := fmt.Sprintf("user sensitive words detected: token_name=%s, words=%s", tokenName, strings.Join(words, ", "))
+			if !c.GetBool(service.SensitiveAlertMatchedContextKey) {
+				logger.LogWarn(c, message)
+			}
 			return types.NewError(errors.New(message), types.ErrorCodeSensitiveWordsDetected)
 		}
 	}

@@ -123,7 +123,52 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		newAPIError = types.NewError(err, types.ErrorCodeGenRelayInfoFailed)
 		return
 	}
+	if logger.IsUserPromptLogEnabled() {
+		if bodyStorage, bodyErr := common.GetBodyStorage(c); bodyErr == nil {
+			if requestBody, bytesErr := bodyStorage.Bytes(); bytesErr == nil {
+				if promptPayload, ok := middleware.ExtractUserPromptLogPayload(c.Request.URL.Path, requestBody, logger.UserPromptLogMaxChars()); ok {
+					if logErr := logger.WriteUserPromptLog(logger.UserPromptLogEntry{
+						RequestID:       c.GetString(common.RequestIdKey),
+						TokenName:       c.GetString("token_name"),
+						Path:            c.Request.URL.Path,
+						Model:           promptPayload.Model,
+						ReasoningEffort: promptPayload.ReasoningEffort,
+						Question:        promptPayload.Question,
+					}); logErr != nil {
+						logger.LogError(c, "write user prompt log failed: "+logErr.Error())
+					}
+				}
+			}
+		}
+	}
 
+	needSensitiveAlert := service.SensitiveAlertWebhookEnabled()
+	tokenName := c.GetString("token_name")
+	if service.IsSensitiveIgnoredToken(tokenName) {
+		needSensitiveAlert = false
+	}
+	alertPayload, hasAlertQuestion := middleware.UserPromptLogPayload{}, false
+	if needSensitiveAlert {
+		if bodyStorage, bodyErr := common.GetBodyStorage(c); bodyErr == nil {
+			if requestBody, bytesErr := bodyStorage.Bytes(); bytesErr == nil {
+				alertPayload, hasAlertQuestion = middleware.ExtractUserPromptLogPayload(c.Request.URL.Path, requestBody, logger.UserPromptLogMaxChars())
+			}
+		}
+	}
+	if needSensitiveAlert && hasAlertQuestion {
+		if contains, words := service.CheckSensitiveText(alertPayload.Question); contains {
+			c.Set(service.SensitiveAlertMatchedContextKey, true)
+			logger.LogWarn(c, fmt.Sprintf("user sensitive words detected: token_name=%s, words=%s", tokenName, strings.Join(words, ", ")))
+			service.SendSensitiveAlertWebhook(c.Request.Context(), service.SensitiveAlertPayload{
+				RequestID: c.GetString(common.RequestIdKey),
+				TokenName: tokenName,
+				Model:     relayInfo.OriginModelName,
+				Path:      c.Request.URL.Path,
+				Words:     words,
+				Question:  alertPayload.Question,
+			})
+		}
+	}
 	defer func() {
 		recovered := recover()
 		resultErr := newAPIError
