@@ -124,7 +124,22 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 	}
 
 	needSensitiveCheck := setting.ShouldCheckPromptSensitive()
+	needSensitiveAlert := service.SensitiveAlertWebhookEnabled()
+	tokenName := c.GetString("token_name")
+	sensitiveIgnoredToken := service.IsSensitiveIgnoredToken(tokenName)
+	if sensitiveIgnoredToken {
+		needSensitiveCheck = false
+		needSensitiveAlert = false
+	}
 	needCountToken := constant.CountToken
+	alertPayload, hasAlertQuestion := middleware.UserPromptLogPayload{}, false
+	if needSensitiveAlert {
+		if bodyStorage, bodyErr := common.GetBodyStorage(c); bodyErr == nil {
+			if requestBody, bytesErr := bodyStorage.Bytes(); bytesErr == nil {
+				alertPayload, hasAlertQuestion = middleware.ExtractUserPromptLogPayload(c.Request.URL.Path, requestBody, logger.UserPromptLogMaxChars())
+			}
+		}
+	}
 	// Avoid building huge CombineText (strings.Join) when token counting and sensitive check are both disabled.
 	var meta *types.TokenCountMeta
 	if needSensitiveCheck || needCountToken {
@@ -133,10 +148,28 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		meta = fastTokenCountMetaForPricing(request)
 	}
 
+	alertContains := false
+	if needSensitiveAlert && hasAlertQuestion {
+		if contains, words := service.CheckSensitiveText(alertPayload.Question); contains {
+			alertContains = true
+			logger.LogWarn(c, fmt.Sprintf("user sensitive words detected: token_name=%s, words=%s", tokenName, strings.Join(words, ", ")))
+			service.SendSensitiveAlertWebhook(c.Request.Context(), service.SensitiveAlertPayload{
+				RequestID: c.GetString(common.RequestIdKey),
+				TokenName: tokenName,
+				Model:     relayInfo.OriginModelName,
+				Path:      c.Request.URL.Path,
+				Words:     words,
+				Question:  alertPayload.Question,
+			})
+		}
+	}
+
 	if needSensitiveCheck && meta != nil {
 		contains, words := service.CheckSensitiveText(meta.CombineText)
 		if contains {
-			logger.LogWarn(c, fmt.Sprintf("user sensitive words detected: %s", strings.Join(words, ", ")))
+			if !alertContains {
+				logger.LogWarn(c, fmt.Sprintf("user sensitive words detected: token_name=%s, words=%s", tokenName, strings.Join(words, ", ")))
+			}
 			newAPIError = types.NewError(err, types.ErrorCodeSensitiveWordsDetected)
 			return
 		}
