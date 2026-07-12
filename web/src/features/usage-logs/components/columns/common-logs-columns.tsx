@@ -809,6 +809,7 @@ export function useCommonLogsColumns(
           const [dialogOpen, setDialogOpen] = useState(false)
           const log = row.original
           const other = parseLogOther(log.other)
+          const ip = log.ip.trim()
 
           const pricingData = usePricingData(
             log.type === 2 &&
@@ -868,11 +869,16 @@ export function useCommonLogsColumns(
             <>
               <button
                 type='button'
-                className='group flex max-w-[200px] items-center gap-1 text-left text-xs'
+                className='group flex max-w-[200px] flex-col gap-0.5 text-left text-xs'
                 onClick={() => setDialogOpen(true)}
                 title={t('Click to view full details')}
               >
                 {detailPreview}
+                {ip && (
+                  <span className='text-muted-foreground/60 max-w-full truncate tabular-nums'>
+                    {ip}
+                  </span>
+                )}
               </button>
               <DetailsDialog
                 log={log}
