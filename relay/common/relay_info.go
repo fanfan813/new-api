@@ -16,6 +16,7 @@ import (
 	"github.com/QuantumNous/new-api/relaykit/relayconvert/convmeta"
 	"github.com/QuantumNous/new-api/relaykit/types"
 	"github.com/QuantumNous/new-api/setting/model_setting"
+	"github.com/QuantumNous/new-api/setting/reasoning"
 	hosttypes "github.com/QuantumNous/new-api/types"
 
 	"github.com/gin-gonic/gin"
@@ -110,6 +111,7 @@ type RelayInfo struct {
 	IsFirstRequest         bool
 	AudioUsage             bool
 	ReasoningEffort        string
+	TokenName              string
 	UserSetting            dto.UserSetting
 	UserEmail              string
 	UserQuota              int
@@ -501,9 +503,16 @@ func genBaseRelayInfo(c *gin.Context, request dto.Request) *RelayInfo {
 		reqId = common.NewRequestId()
 	}
 	reasoningEffort := reasoningEffortFromRequest(request)
+	// Adaptors treat a model effort suffix as authoritative and overwrite the
+	// request-body field, so the limit check must use the same precedence.
+	_, suffixEffort, hasSuffix := reasoning.TrimEffortSuffix(common.GetContextKeyString(c, constant.ContextKeyOriginalModel))
+	if hasSuffix {
+		reasoningEffort = suffixEffort
+	}
 	info := &RelayInfo{
 		Request:         request,
 		ReasoningEffort: reasoningEffort,
+		TokenName:       c.GetString("token_name"),
 
 		RequestId:  reqId,
 		UserId:     common.GetContextKeyInt(c, constant.ContextKeyUserId),

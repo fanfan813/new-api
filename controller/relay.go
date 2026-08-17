@@ -25,6 +25,7 @@ import (
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/reasoning"
 
 	"github.com/bytedance/gopkg/util/gopool"
 	"github.com/samber/lo"
@@ -123,6 +124,11 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 	relayInfo, err := relaycommon.GenRelayInfo(c, relayFormat, request, ws)
 	if err != nil {
 		newAPIError = types.NewError(err, types.ErrorCodeGenRelayInfoFailed)
+		return
+	}
+	if err := reasoning.ValidateEffortLimit(relayInfo.TokenName, relayInfo.GetReasoningEffort()); err != nil {
+		limitErr, _ := reasoning.AsLimitExceededError(err)
+		newAPIError = reasoning.NewLimitExceededAPIError(limitErr)
 		return
 	}
 

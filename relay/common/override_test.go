@@ -11,6 +11,7 @@ import (
 
 	"github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/setting/model_setting"
+	settingreasoning "github.com/QuantumNous/new-api/setting/reasoning"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -2502,6 +2503,29 @@ func TestApplyParamOverrideWithRelayInfoSynchronizesReasoningEffort(t *testing.T
 			assert.Equal(t, tt.expected, info.ReasoningEffort)
 		})
 	}
+}
+
+func TestApplyParamOverrideWithRelayInfoEnforcesReasoningEffortLimit(t *testing.T) {
+	t.Setenv("REASONING_EFFORT_MAX", "medium")
+	t.Setenv("REASONING_EFFORT_IGNORED_TOKEN_NAMES", "alex")
+	info := &RelayInfo{
+		RelayFormat:     types.RelayFormatOpenAIResponses,
+		ReasoningEffort: "medium",
+		TokenName:       "normal",
+		ChannelMeta: &ChannelMeta{ParamOverride: map[string]interface{}{
+			"operations": []interface{}{
+				map[string]interface{}{"mode": "set", "path": "reasoning.effort", "value": "high"},
+			},
+		}},
+	}
+
+	_, err := ApplyParamOverrideWithRelayInfo([]byte(`{"reasoning":{"effort":"medium"}}`), info)
+
+	require.Error(t, err)
+	limitErr, ok := settingreasoning.AsLimitExceededError(err)
+	require.True(t, ok)
+	assert.Equal(t, "high", limitErr.Requested)
+	assert.Equal(t, "medium", limitErr.Maximum)
 }
 
 func TestReasoningEffortOverrideIsAuditedWithoutDebugMode(t *testing.T) {

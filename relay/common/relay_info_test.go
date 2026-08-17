@@ -2,9 +2,11 @@ package common
 
 import (
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/relaykit/relayconvert/convmeta"
 	"github.com/QuantumNous/new-api/relaykit/types"
@@ -155,6 +157,21 @@ func TestGenRelayInfoCapturesRequestReasoningEffort(t *testing.T) {
 			assert.Equal(t, tt.expected, info.ReasoningEffort)
 		})
 	}
+}
+
+func TestGenRelayInfoCapturesReasoningEffortFromModelSuffix(t *testing.T) {
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Set(string(constant.ContextKeyOriginalModel), "gpt-5.5-xhigh")
+	c.Set("token_name", "normal")
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+
+	info := GenRelayInfoOpenAI(c, &dto.GeneralOpenAIRequest{
+		Model:           "gpt-5.5-xhigh",
+		ReasoningEffort: "low",
+	})
+
+	require.Equal(t, "xhigh", info.ReasoningEffort)
+	require.Equal(t, "normal", info.TokenName)
 }
 
 func TestInitChannelMetaRestoresRequestReasoningEffortForRetry(t *testing.T) {

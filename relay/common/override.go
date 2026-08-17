@@ -11,6 +11,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/relaykit/types"
+	"github.com/QuantumNous/new-api/setting/reasoning"
 	"github.com/samber/lo"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -197,6 +198,11 @@ func ApplyParamOverrideWithRelayInfo(jsonData []byte, info *RelayInfo) ([]byte, 
 		return nil, err
 	}
 	syncReasoningEffortAfterParamOverride(info, jsonData, result)
+	if info != nil {
+		if err := reasoning.ValidateEffortLimit(info.TokenName, info.GetReasoningEffort()); err != nil {
+			return nil, err
+		}
+	}
 	syncRuntimeHeaderOverrideFromContext(info, overrideCtx)
 	if info != nil {
 		if recorder != nil {
