@@ -3,6 +3,7 @@ package common
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -193,6 +194,21 @@ func TestGenRelayInfoKeepsOriginAndLeavesBillingUnset(t *testing.T) {
 	assert.Equal(t, model, info.OriginModelName)
 	assert.Empty(t, info.BillingModelName)
 	assert.Equal(t, model, info.GetBillingModelName())
+}
+
+func TestGenRelayInfoCapturesReasoningEffortFromModelSuffix(t *testing.T) {
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Set(string(constant.ContextKeyOriginalModel), "gpt-5.5-xhigh")
+	c.Set("token_name", "normal")
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+
+	info := GenRelayInfoOpenAI(c, &dto.GeneralOpenAIRequest{
+		Model:           "gpt-5.5-xhigh",
+		ReasoningEffort: "low",
+	})
+
+	require.Equal(t, "xhigh", info.ReasoningEffort)
+	require.Equal(t, "normal", info.TokenName)
 }
 
 func TestInitChannelMetaRestoresRequestReasoningEffortForRetry(t *testing.T) {

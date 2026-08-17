@@ -25,6 +25,7 @@ import (
 	"github.com/QuantumNous/new-api/relaykit/types"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/reasoning"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -140,6 +141,11 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 				}
 			}
 		}
+	}
+	if err := reasoning.ValidateEffortLimit(relayInfo.TokenName, relayInfo.GetReasoningEffort()); err != nil {
+		limitErr, _ := reasoning.AsLimitExceededError(err)
+		newAPIError = reasoning.NewLimitExceededAPIError(limitErr)
+		return
 	}
 
 	needSensitiveAlert := service.SensitiveAlertWebhookEnabled()
